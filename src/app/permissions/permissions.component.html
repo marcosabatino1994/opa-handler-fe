@@ -1,0 +1,33 @@
+<div class="wrap">
+  <h2>Permessi</h2>
+
+  <form class="form" (ngSubmit)="create()">
+    <input name="action" placeholder="action (es. read)"
+           [(ngModel)]="newPermission.action" required />
+    <input name="resource" placeholder="resource (es. report)"
+           [(ngModel)]="newPermission.resource" required />
+    <button type="submit">Crea</button>
+  </form>
+
+  @if (error) {
+  <p class="error">{{ error }}</p>
+  }
+
+  <table>
+    <thead>
+    <tr><th>ID</th><th>Action</th><th>Resource</th><th></th></tr>
+    </thead>
+    <tbody>
+    @for (p of permissions; track p.id) {
+    <tr>
+      <td>{{ p.id }}</td>
+      <td>{{ p.action }}</td>
+      <td>{{ p.resource }}</td>
+      <td><button (click)="remove(p.id)">Elimina</button></td>
+    </tr>
+    } @empty {
+    <tr><td colspan="4">Nessun permesso. Creane uno qui sopra.</td></tr>
+    }
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,7 @@
+.wrap { max-width: 640px; margin: 24px auto; font-family: system-ui, sans-serif; }
+.form { display: flex; gap: 8px; margin-bottom: 16px; }
+.form input { flex: 1; padding: 8px; }
+.form button, td button { padding: 8px 12px; cursor: pointer; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+.error { color: #c0392b; }
