@@ -1,0 +1,45 @@
+<div class="wrap">
+  <header class="topbar">
+    <span>📄 Portale Report</span>
+    <span class="who">
+      Connesso come: <strong>{{ currentUser }}</strong>
+      <button class="logout" (click)="logout()">Esci</button>
+    </span>
+  </header>
+
+  @if (loading) {
+  <p class="muted">Carico profilo e permessi…</p>
+  } @else {
+  @if (error) { <p class="error">{{ error }}</p> }
+
+  <section class="profile">
+    <h4>Il tuo profilo (dal database)</h4>
+    @if (me && me.roles.length) {
+    @for (r of me.roles; track r.id) {
+    <div class="role">
+      <span class="role-name">{{ r.name }}</span>
+      @for (p of r.permissions; track p.id) {
+      <span class="badge">{{ p.action }}:{{ p.resource }}</span>
+      }
+    </div>
+    }
+    } @else {
+    <p class="muted">Nessun ruolo assegnato.</p>
+    }
+  </section>
+
+  <div class="doc-card">
+    <h3>Report Trimestrale</h3>
+    <p>Documento aziendale di esempio.</p>
+    <div class="actions">
+      <button class="secondary">Apri</button>
+      <!-- esiste nel DOM solo se OPA autorizza -->
+      @if (canDelete) {
+      <button class="danger" (click)="onDelete()">Elimina</button>
+      }
+    </div>
+  </div>
+
+  <a class="reload" (click)="refresh()">↻ ricarica permessi</a>
+  }
+</div>

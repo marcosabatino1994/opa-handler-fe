@@ -1,0 +1,6 @@
+.login { max-width: 380px; margin: 60px auto; display: flex; flex-direction: column;
+         gap: 12px; font-family: system-ui, sans-serif; text-align: center; }
+select, button { padding: 10px; font-size: 15px; }
+button { background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+.muted { color: #777; }
+.error { color: #c0392b; }

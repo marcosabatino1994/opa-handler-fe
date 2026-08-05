@@ -1,0 +1,15 @@
+<div class="login">
+  <h2>Accedi al Portale Report</h2>
+  <p class="muted">Scegli con quale utente entrare (login simulato).</p>
+
+  <select name="user" [(ngModel)]="selected">
+    <option value="">— scegli un utente —</option>
+    @for (u of users; track u.id) {
+    <option [value]="u.username">{{ u.username }}</option>
+    }
+  </select>
+
+  <button (click)="login()">Accedi</button>
+
+  @if (error) { <p class="error">{{ error }}</p> }
+</div>
