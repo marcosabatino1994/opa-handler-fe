@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>opa-handler-fe — Frontend RBAC + OPA</title>
+<style>
+  :root {
+    --ink: #1f2937;          /* slate scuro, come la topbar dell'app */
+    --ink-soft: #374151;
+    --paper: #ffffff;
+    --wash: #f6f7f9;         /* fondo pagina */
+    --line: #e3e6ea;
+    --muted: #6b7280;
+    --accent: #2563eb;       /* blu, come i link/azioni dell'app */
+    --allow: #1a7f37;        /* verde ALLOW */
+    --deny: #c0392b;         /* rosso DENY */
+    --code-bg: #0f172a;      /* blocchi comando: terminale */
+    --code-fg: #e5e9f0;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--wash);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.65;
+    font-size: 16px;
+  }
+
+  .page { max-width: 860px; margin: 0 auto; padding: 0 22px 96px; }
+
+  /* ---- Hero ---- */
+  header.hero {
+    background: var(--ink);
+    color: #fff;
+    margin: 0 -22px 40px;
+    padding: 46px 22px 40px;
+  }
+  header.hero .inner { max-width: 860px; margin: 0 auto; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #93c5fd;
+    margin: 0 0 10px;
+  }
+  header.hero h1 {
+    font-size: 2.35rem;
+    line-height: 1.1;
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  header.hero p.lead {
+    margin: 0;
+    max-width: 60ch;
+    color: #cbd5e1;
+    font-size: 1.05rem;
+  }
+
+  /* ---- Signature: la catena del flusso ---- */
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 26px;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .flow .node {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.16);
+    color: #e5e9f0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .flow .node.decision { border-color: #3b82f6; color: #bfdbfe; }
+  .flow .arrow { color: #64748b; }
+
+  /* ---- Tipografia sezioni ---- */
+  h2 {
+    font-size: 1.5rem;
+    letter-spacing: -0.01em;
+    margin: 46px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--ink);
+    display: inline-block;
+  }
+  h3 { font-size: 1.12rem; margin: 26px 0 8px; }
+  h4 { font-size: 1rem; margin: 20px 0 6px; color: var(--ink-soft); }
+  p { margin: 12px 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 650; }
+
+  /* ---- Codice ---- */
+  code {
+    font-family: var(--mono);
+    font-size: .88em;
+    background: #eef1f5;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #0b2545;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 16px 18px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin: 14px 0;
+    border: 1px solid #1e293b;
+  }
+  pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+  pre .cmt { color: #7c8aa5; }
+
+  /* ---- Tabelle ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14.5px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  th, td { text-align: left; padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f0f2f5; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  td code, th code { font-size: .85em; }
+
+  /* ---- Callout ---- */
+  .note {
+    background: #eff4ff;
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+    font-size: 14.5px;
+  }
+  .note strong { color: #1e40af; }
+
+  /* ---- Pill ALLOW/DENY ---- */
+  .pill { display: inline-block; font-family: var(--mono); font-size: 12px; font-weight: 700;
+          padding: 2px 9px; border-radius: 20px; }
+  .pill.allow { background: #e6f4ea; color: var(--allow); }
+  .pill.deny  { background: #fdecea; color: var(--deny); }
+
+  /* ---- Passi numerati dello scenario ---- */
+  ol.steps { counter-reset: step; list-style: none; padding-left: 0; }
+  ol.steps > li {
+    position: relative;
+    padding: 4px 0 14px 44px;
+    margin: 0;
+  }
+  ol.steps > li::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute; left: 0; top: 2px;
+    width: 28px; height: 28px;
+    background: var(--ink); color: #fff;
+    font-family: var(--mono); font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 7px;
+  }
+
+  ul { padding-left: 20px; }
+  li { margin: 5px 0; }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  @media (max-width: 620px) {
+    header.hero h1 { font-size: 1.8rem; }
+    .page { padding: 0 16px 64px; }
+    header.hero { margin: 0 -16px 32px; padding: 34px 16px 30px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="inner">
+    <p class="eyebrow">POC · RBAC · Open Policy Agent</p>
+    <h1>opa-handler-fe</h1>
+    <p class="lead">Frontend Angular della POC RBAC + OPA. Due facce in un solo progetto: una dashboard per amministrare permessi, ruoli e utenti, e un'app di test dove un pulsante appare solo se OPA autorizza chi è collegato.</p>
+    <div class="flow" aria-label="Flusso di autorizzazione">
+      <span class="node">Dashboard</span><span class="arrow">→</span>
+      <span class="node">Oracle</span><span class="arrow">→</span>
+      <span class="node">Bundle dati</span><span class="arrow">→</span>
+      <span class="node">OPA</span><span class="arrow">→</span>
+      <span class="node decision">Decisione</span><span class="arrow">→</span>
+      <span class="node">UI</span>
+    </div>
+  </div>
+</header>
+
+<div class="page">
+
+  <p>Il frontend non contiene logica di autorizzazione: chiede al backend Quarkus (porta <code>8080</code>), che a sua volta interroga OPA. L'amministratore tocca solo il database; bundle, decisione e pulsante che compare o sparisce fluiscono da soli.</p>
+
+  <h2>Stack</h2>
+  <ul>
+    <li>Angular (standalone components) + TypeScript</li>
+    <li><code>HttpClient</code> per le chiamate REST verso Quarkus</li>
+    <li>Router con una <strong>guardia</strong> (<code>authGuard</code>) che protegge l'app di test</li>
+    <li><code>localStorage</code> per la sessione (login simulato)</li>
+  </ul>
+
+  <h2>Prerequisiti</h2>
+
+  <h4>Ambiente di sviluppo</h4>
+  <ul>
+    <li>Node.js 18.19+ oppure 20+ e npm — verifica con <code>node --version</code></li>
+    <li>Angular CLI — <code>npm install -g @angular/cli</code> (oppure usa <code>npx @angular/cli</code>)</li>
+  </ul>
+
+  <h4>Backend in esecuzione</h4>
+  <p>Il frontend da solo non fa nulla: chiama <code>http://localhost:8080</code>. Devono essere attivi i tre container della POC, sulla rete <code>rbac-net</code>:</p>
+  <table>
+    <thead><tr><th>Container</th><th>Ruolo</th><th>Porta</th></tr></thead>
+    <tbody>
+      <tr><td><code>oracle-poc</code></td><td>Database (fonte di verità)</td><td>1521</td></tr>
+      <tr><td><code>rbac-opa</code></td><td>Backend Quarkus (CRUD + proxy <code>/authz</code>)</td><td>8080</td></tr>
+      <tr><td><code>opa-bundles</code></td><td>Motore di policy OPA</td><td>8181</td></tr>
+    </tbody>
+  </table>
+  <p>Verifica che siano tutti <strong>Up</strong>:</p>
+  <pre><code>nerdctl ps</code></pre>
+  <p>Se il backend non è avviato, i comandi essenziali (dalla POC) sono:</p>
+<pre><code><span class="cmt"># 1. Rete condivisa</span>
+nerdctl network create rbac-net
+
+<span class="cmt"># 2. Oracle</span>
+nerdctl run -d --name oracle-poc --network rbac-net -p 1521:1521 `
+  -e ORACLE_PASSWORD=poc -e APP_USER=pocuser -e APP_USER_PASSWORD=pocpass `
+  gvenzl/oracle-free
+<span class="cmt"># attendere "DATABASE IS READY TO USE!" in: nerdctl logs -f oracle-poc</span>
+
+<span class="cmt"># 3. Quarkus</span>
+nerdctl run -d --name rbac-opa --network rbac-net -p 8080:8080 poc/rbac-opa:latest
+
+<span class="cmt"># 4. OPA (opa-bundles, porta 8181) — vedi README del backend / opa-config.yaml</span></code></pre>
+  <div class="note"><strong>Nota</strong> — Il comando di avvio di OPA e la sua configurazione (<code>opa-config.yaml</code>, sorgenti dei bundle) appartengono al progetto backend: fai riferimento al suo README per la versione autoritativa.</div>
+
+  <h2>Avvio del frontend</h2>
+  <p>Dalla cartella del progetto <code>opa-handler-fe</code>:</p>
+<pre><code>npm install
+ng serve</code></pre>
+  <p>Apri <strong><a href="http://localhost:4200">http://localhost:4200</a></strong> — vieni reindirizzato a <code>/permissions</code> (la dashboard).</p>
+  <div class="note">Il frontend chiama <code>http://localhost:8080</code>, cablato nei service sotto <code>src/app/services/</code>. Perché il browser possa farlo serve il <strong>CORS</strong> abilitato lato Quarkus per l'origine <code>http://localhost:4200</code> (già configurato nel backend con <code>quarkus.http.cors.enabled=true</code>).</div>
+
+  <h2>Struttura del progetto</h2>
+<pre><code>src/app/
+├── models/            <span class="cmt"># forme dei dati</span>
+│   ├── permission.ts
+│   ├── role.ts
+│   └── user.ts
+├── services/          <span class="cmt"># chiamate al backend + sessione</span>
+│   ├── permission.service.ts
+│   ├── role.service.ts
+│   ├── user.service.ts
+│   ├── authz.service.ts     <span class="cmt"># GET /authz -> decisione di OPA</span>
+│   └── session.service.ts   <span class="cmt"># login simulato (localStorage)</span>
+├── guards/
+│   └── auth.guard.ts        <span class="cmt"># protegge /test</span>
+├── permissions/       <span class="cmt"># dashboard: sezione Permessi</span>
+├── roles/             <span class="cmt"># dashboard: sezione Ruoli</span>
+├── users/             <span class="cmt"># dashboard: sezione Utenti</span>
+├── login/             <span class="cmt"># app di test: schermata di accesso</span>
+├── test-app/          <span class="cmt"># app di test: portale col pulsante gestito da OPA</span>
+├── app.routes.ts
+└── app.config.ts</code></pre>
+
+  <h4>Rotte</h4>
+  <table>
+    <thead><tr><th>Rotta</th><th>Sezione</th><th>Protetta</th></tr></thead>
+    <tbody>
+      <tr><td><code>/permissions</code></td><td>Dashboard — permessi</td><td>no</td></tr>
+      <tr><td><code>/roles</code></td><td>Dashboard — ruoli</td><td>no</td></tr>
+      <tr><td><code>/users</code></td><td>Dashboard — utenti</td><td>no</td></tr>
+      <tr><td><code>/login</code></td><td>App di test — accesso</td><td>no</td></tr>
+      <tr><td><code>/test</code></td><td>App di test — portale</td><td>sì (<code>authGuard</code>)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Contratti API usati dal frontend</h2>
+  <p>Backend Quarkus, porta <code>8080</code>:</p>
+  <table>
+    <thead><tr><th>Service (FE)</th><th>Metodo e path</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td><code>permission.service</code></td><td><code>GET/POST/DELETE /permissions</code></td><td>oggetto <code>{ id, action, resource }</code>; POST invia <code>{ action, resource }</code></td></tr>
+      <tr><td><code>role.service</code></td><td><code>GET/POST/DELETE /roles</code></td><td>GET → <code>{ id, name, permissions:[…] }</code>; POST invia <code>{ name, permissionIds:[…] }</code></td></tr>
+      <tr><td><code>user.service</code></td><td><code>GET/POST/DELETE /users</code></td><td>GET → <code>{ id, username, roles:[…] }</code>; POST invia <code>{ username, roleIds:[…] }</code></td></tr>
+      <tr><td><code>authz.service</code></td><td><code>GET /authz?user=&amp;action=&amp;resource=</code></td><td>restituisce <code>{ "result": true|false }</code></td></tr>
+    </tbody>
+  </table>
+  <div class="note"><strong>Asimmetria lettura/scrittura</strong> — in lettura ricevi oggetti annidati (<code>role.permissions</code>, <code>user.roles</code>), in scrittura invii solo id (<code>permissionIds</code>, <code>roleIds</code>). L'utente eredita i permessi <em>attraverso</em> i ruoli, non li ha diretti.</div>
+
+  <h2>Scenario d'uso (demo)</h2>
+  <p><strong>Regola d'oro:</strong> si costruisce dal basso — <strong>permessi → ruoli → utenti</strong>. Un ruolo non può collegare un permesso inesistente; un utente non può ricevere un ruolo non ancora creato. Se salti l'ordine, la checkbox che ti serve non esiste.</p>
+
+  <ol class="steps">
+    <li>
+      <h3 style="margin-top:0">Permessi <code>/permissions</code></h3>
+      Crea <code>read</code> / <code>report</code> e <code>delete</code> / <code>report</code>.
+    </li>
+    <li>
+      <h3 style="margin-top:0">Ruoli <code>/roles</code></h3>
+      <code>viewer</code> → spunta <strong>solo</strong> <code>read:report</code>.<br>
+      <code>editor</code> → spunta <code>read:report</code> <strong>e</strong> <code>delete:report</code>.
+    </li>
+    <li>
+      <h3 style="margin-top:0">Utenti <code>/users</code></h3>
+      <code>mario</code> → ruolo <code>editor</code>. &nbsp; <code>luigi</code> → ruolo <code>viewer</code>.
+      <p>Controprova: <code>curl.exe http://localhost:8080/users</code> deve mostrare mario con editor (read + delete) e luigi con viewer (solo read).</p>
+    </li>
+    <li>
+      <h3 style="margin-top:0">Prova l'app <code>/test</code></h3>
+      Accedi come <code>mario</code>, attendi ~15 s, premi <em>↻ ricarica permessi</em> → compare <span class="pill allow">Elimina ✓</span> (OPA autorizza <code>delete:report</code>).<br>
+      Esci, accedi come <code>luigi</code> → <span class="pill deny">niente pulsante ✗</span> (OPA nega la delete).
+    </li>
+    <li>
+      <h3 style="margin-top:0">Il colpo di scena</h3>
+      Con mario loggato e il pulsante visibile: in dashboard cambia il suo ruolo da <code>editor</code> a <code>viewer</code>, torna su <code>/test</code>, attendi ~15 s e premi <em>↻ ricarica permessi</em> → il pulsante <strong>sparisce</strong>. Nessun codice ricompilato: è cambiato solo un dato nel database.
+    </li>
+  </ol>
+
+  <div class="note">Il pannello <em>profilo</em> legge da Oracle (aggiornamento <strong>immediato</strong>), il pulsante dipende da OPA (aggiornamento dopo ~15 s del polling). Per qualche secondo vedi il ruolo già cambiato ma il pulsante ancora "vecchio": è il disaccoppiamento tra dati e decisione, visibile a occhio.</div>
+
+  <h2>Note importanti</h2>
+  <ul>
+    <li><strong>Login simulato.</strong> Nessuna autenticazione reale: scegli <em>chi essere</em>, senza password. OPA riguarda l'autorizzazione (<em>cosa puoi fare</em>), non l'autenticazione (<em>dimostrare chi sei</em>). In produzione lo username arriverebbe da un identity provider.</li>
+    <li><strong>Ritardo di ~15 s.</strong> È il polling con cui OPA ricarica il bundle dati da Quarkus. Dopo ogni modifica in dashboard, attendi qualche secondo e usa <em>↻ ricarica permessi</em>.</li>
+    <li><strong>Gli id non ripartono da 1.</strong> Le sequenze Oracle continuano da dove erano, anche dopo aver svuotato le tabelle. È normale.</li>
+  </ul>
+
+  <h2>Risoluzione dei problemi</h2>
+  <table>
+    <thead><tr><th>Sintomo</th><th>Causa probabile</th><th>Rimedio</th></tr></thead>
+    <tbody>
+      <tr><td><code>Http failure … : 0 Unknown Error</code></td><td>Quarkus spento o CORS non attivo</td><td><code>nerdctl ps</code> (backend Up?); verifica il CORS lato Quarkus</td></tr>
+      <tr><td><code>404 Not Found</code> su <code>/authz</code></td><td>L'endpoint non è nell'immagine in esecuzione</td><td>Ricompila e ribuilda l'immagine del backend</td></tr>
+      <tr><td>Il pulsante Elimina non appare mai</td><td>Permesso mancante o polling non atteso</td><td>L'utente ha <code>delete:report</code>? Atteso ~15 s e premuto <em>↻ ricarica</em>?</td></tr>
+      <tr><td>Profilo vuoto dopo il login</td><td>Username non combaciante</td><td>Deve corrispondere esatto a quello nel DB (maiuscole/spazi)</td></tr>
+      <tr><td><code>500</code> eliminando un ruolo/utente dalla UI</td><td>Violazione di foreign key</td><td>Per svuotare tutto, cancella via SQL nell'ordine ponti → entità (<code>user_roles</code>, <code>role_permissions</code>, poi <code>app_users</code>, <code>app_roles</code>, <code>permissions</code>)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Build di produzione (opzionale)</h2>
+<pre><code>ng build</code></pre>
+  <p>Genera i file statici in <code>dist/</code>. L'URL del backend è cablato a <code>http://localhost:8080</code> nei service: per un deploy reale andrebbe spostato in un file di <em>environment</em>.</p>
+
+  <footer>
+    opa-handler-fe · Frontend della POC RBAC + OPA · documento di progetto.
+  </footer>
+
+</div>
+</body>
+</html>
