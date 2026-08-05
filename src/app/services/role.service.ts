@@ -16,6 +16,10 @@ export class RoleService {
     return this.http.post<Role>(this.baseUrl, req);
   }
 
+  update(id: number, req: RoleRequest): Observable<Role> {
+    return this.http.put<Role>(`${this.baseUrl}/${id}`, req);
+  }
+
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }

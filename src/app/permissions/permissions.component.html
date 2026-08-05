@@ -19,12 +19,27 @@
     </thead>
     <tbody>
     @for (p of permissions; track p.id) {
-    <tr>
-      <td>{{ p.id }}</td>
-      <td>{{ p.action }}</td>
-      <td>{{ p.resource }}</td>
-      <td><button (click)="remove(p.id)">Elimina</button></td>
-    </tr>
+      @if (editingId === p.id) {
+      <tr class="editing">
+        <td>{{ p.id }}</td>
+        <td><input [(ngModel)]="editingPermission.action" [name]="'action-' + p.id" /></td>
+        <td><input [(ngModel)]="editingPermission.resource" [name]="'resource-' + p.id" /></td>
+        <td class="actions">
+          <button class="save" (click)="saveEdit(p)">Salva</button>
+          <button (click)="cancelEdit()">Annulla</button>
+        </td>
+      </tr>
+      } @else {
+      <tr>
+        <td>{{ p.id }}</td>
+        <td>{{ p.action }}</td>
+        <td>{{ p.resource }}</td>
+        <td class="actions">
+          <button (click)="startEdit(p)">Modifica</button>
+          <button (click)="remove(p.id)">Elimina</button>
+        </td>
+      </tr>
+      }
     } @empty {
     <tr><td colspan="4">Nessun permesso. Creane uno qui sopra.</td></tr>
     }
