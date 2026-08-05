@@ -1,0 +1,14 @@
+.wrap { max-width: 720px; margin: 24px auto; font-family: system-ui, sans-serif; }
+.form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;
+        padding: 12px; border: 1px solid #eee; border-radius: 8px; }
+.form > input { padding: 8px; }
+.roles { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.roles-label { font-weight: 600; }
+.role { display: inline-flex; gap: 4px; align-items: center; }
+button { padding: 8px 12px; cursor: pointer; align-self: flex-start; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+.badge { display: inline-block; padding: 2px 8px; margin: 2px;
+         background: #efe; border-radius: 12px; font-size: 12px; }
+.muted { color: #999; }
+.error { color: #c0392b; }

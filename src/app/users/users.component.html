@@ -1,0 +1,45 @@
+<div class="wrap">
+  <h2>Utenti</h2>
+
+  <div class="form">
+    <input placeholder="username (es. mario)" name="username" [(ngModel)]="newUsername" />
+
+    <div class="roles">
+      <span class="roles-label">Ruoli da assegnare:</span>
+      @for (r of roles; track r.id) {
+      <label class="role">
+        <input type="checkbox" [checked]="isSelected(r.id)" (change)="toggle(r.id)" />
+        {{ r.name }}
+      </label>
+      } @empty {
+      <span class="muted">Nessun ruolo disponibile — creane prima nella sezione Ruoli.</span>
+      }
+    </div>
+
+    <button (click)="create()">Crea utente</button>
+  </div>
+
+  @if (error) { <p class="error">{{ error }}</p> }
+
+  <table>
+    <thead>
+    <tr><th>ID</th><th>Username</th><th>Ruoli</th><th></th></tr>
+    </thead>
+    <tbody>
+    @for (u of users; track u.id) {
+    <tr>
+      <td>{{ u.id }}</td>
+      <td>{{ u.username }}</td>
+      <td>
+        @for (r of u.roles; track r.id) {
+        <span class="badge">{{ r.name }}</span>
+        } @empty { <span class="muted">—</span> }
+      </td>
+      <td><button (click)="remove(u.id)">Elimina</button></td>
+    </tr>
+    } @empty {
+    <tr><td colspan="4">Nessun utente. Creane uno qui sopra.</td></tr>
+    }
+    </tbody>
+  </table>
+</div>
