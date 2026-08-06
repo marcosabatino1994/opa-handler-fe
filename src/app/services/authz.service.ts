@@ -11,11 +11,12 @@ export class AuthzService {
   private http = inject(HttpClient);
   private baseUrl = 'http://localhost:8080/authz';
 
-  check(user: string, action: string, resource: string): Observable<AuthzResponse> {
-    const params = new HttpParams()
+  check(user: string, action: string, resource: string, status?: string): Observable<AuthzResponse> {
+    let params = new HttpParams()
       .set('user', user)
       .set('action', action)
       .set('resource', resource);
+    if (status) params = params.set('status', status);   // solo se serve (read)
     return this.http.get<AuthzResponse>(this.baseUrl, { params });
   }
 }

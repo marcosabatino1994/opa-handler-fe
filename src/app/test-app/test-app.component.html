@@ -1,45 +1,71 @@
-<div class="wrap">
-  <header class="topbar">
-    <span>📄 Portale Report</span>
-    <span class="who">
-      Connesso come: <strong>{{ currentUser }}</strong>
-      <button class="logout" (click)="logout()">Esci</button>
-    </span>
+<div class="fs-app">
+  <header class="fs-bar">
+    <div class="fs-brand">
+      <span class="fs-mark">FS</span>
+      <span class="fs-title">Rete Intermodale</span>
+    </div>
+    <div class="fs-user">
+      <span>{{ currentUser }}</span>
+      <button class="fs-btn ghost" (click)="logout()">Esci</button>
+    </div>
   </header>
 
-  @if (loading) {
-  <p class="muted">Carico profilo e permessi…</p>
-  } @else {
-  @if (error) { <p class="error">{{ error }}</p> }
-
-  <section class="profile">
-    <h4>Il tuo profilo (dal database)</h4>
-    @if (me && me.roles.length) {
-    @for (r of me.roles; track r.id) {
-    <div class="role">
-      <span class="role-name">{{ r.name }}</span>
-      @for (p of r.permissions; track p.id) {
-      <span class="badge">{{ p.action }}:{{ p.resource }}</span>
+  <main class="fs-main">
+    <div class="fs-head">
+      <h1>Tratte intermodali</h1>
+      @if (canCreate) {
+      <button class="fs-btn primary" (click)="openCreate()">+ Nuova tratta</button>
       }
     </div>
+
+    @if (error) { <p class="fs-error">{{ error }}</p> }
+
+    @if (showForm) {
+    <div class="fs-form">
+      <h3>{{ editingId == null ? 'Nuova tratta' : 'Modifica tratta' }}</h3>
+      <div class="fs-fields">
+        <label>Origine <input name="origin" [(ngModel)]="form.origin" placeholder="es. Milano"></label>
+        <label>Destinazione <input name="destination" [(ngModel)]="form.destination" placeholder="es. Napoli"></label>
+        <label>Modalità (separate da virgola) <input name="modes" [(ngModel)]="form.modes" placeholder="ferro, gomma, mare"></label>
+      </div>
+      <div class="fs-form-actions">
+        <button class="fs-btn primary" (click)="submitForm()">Salva</button>
+        <button class="fs-btn" (click)="cancelForm()">Annulla</button>
+      </div>
+    </div>
     }
+
+    @if (loading) {
+    <p class="fs-muted">Carico le tratte e verifico i permessi…</p>
+    } @else if (!routes.length) {
+    <div class="fs-empty">Nessuna tratta visibile con il tuo profilo.</div>
     } @else {
-    <p class="muted">Nessun ruolo assegnato.</p>
-    }
-  </section>
-
-  <div class="doc-card">
-    <h3>Report Trimestrale</h3>
-    <p>Documento aziendale di esempio.</p>
-    <div class="actions">
-      <button class="secondary">Apri</button>
-      <!-- esiste nel DOM solo se OPA autorizza -->
-      @if (canDelete) {
-      <button class="danger" (click)="onDelete()">Elimina</button>
+    <div class="fs-list">
+      @for (r of routes; track r.id) {
+      <article class="fs-card">
+        <div class="fs-route">
+          <span class="fs-node">{{ r.origin }}</span>
+          <span class="fs-line"></span>
+          <span class="fs-node">{{ r.destination }}</span>
+        </div>
+        <div class="fs-meta">
+          @for (m of r.modes; track m) { <span class="fs-mode">{{ m }}</span> }
+          <span class="fs-status"
+                [class.rev]="r.status === 'IN_REVISIONE'"
+                [class.app]="r.status === 'APPROVATA'"
+                [class.rif]="r.status === 'RIFIUTATA'">{{ statusLabel(r.status) }}</span>
+        </div>
+        <div class="fs-actions">
+          @if (r.can.modify) { <button class="fs-btn" (click)="openEdit(r)">Modifica</button> }
+          @if (r.can.approve && r.status !== 'APPROVATA') { <button class="fs-btn ok" (click)="approve(r)">Approva</button> }
+          @if (r.can.reject && r.status !== 'RIFIUTATA') { <button class="fs-btn warn" (click)="reject(r)">Rifiuta</button> }
+          @if (r.can.delete) { <button class="fs-btn danger" (click)="remove(r)">Elimina</button> }
+        </div>
+      </article>
       }
     </div>
-  </div>
+    }
 
-  <a class="reload" (click)="refresh()">↻ ricarica permessi</a>
-  }
+    <a class="fs-reload" (click)="refresh()">↻ ricarica</a>
+  </main>
 </div>
