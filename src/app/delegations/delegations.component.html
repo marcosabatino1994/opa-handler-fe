@@ -1,0 +1,63 @@
+<div class="wrap">
+  <h2>Deleghe</h2>
+
+  <div class="form">
+    <select [(ngModel)]="fromUser">
+      <option value="">-- Chi delega --</option>
+      @for (u of users; track u.id) {
+        <option [value]="u.username">{{ u.username }}</option>
+      }
+    </select>
+
+    <select [(ngModel)]="toUser">
+      <option value="">-- A chi --</option>
+      @for (u of users; track u.id) {
+        <option [value]="u.username">{{ u.username }}</option>
+      }
+    </select>
+
+    <select [(ngModel)]="action">
+      <option value="">-- Azione --</option>
+      @for (p of permissions; track p.id) {
+        <option [value]="p.action">{{ p.action }}</option>
+      }
+    </select>
+
+    <select [(ngModel)]="resource">
+      <option value="">-- Risorsa --</option>
+      @for (r of uniqueResources; track r) {
+        <option [value]="r">{{ r }}</option>
+      }
+    </select>
+
+    <button (click)="create()">Aggiungi delega</button>
+    @if (error) {
+      <p class="error">{{ error }}</p>
+    }
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Da</th>
+        <th>A</th>
+        <th>Azione</th>
+        <th>Risorsa</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (d of delegations; track d.id) {
+        <tr>
+          <td>{{ d.fromUser }}</td>
+          <td>{{ d.toUser }}</td>
+          <td><span class="badge">{{ d.action }}</span></td>
+          <td>{{ d.resource }}</td>
+          <td><button (click)="remove(d.id)">Elimina</button></td>
+        </tr>
+      } @empty {
+        <tr><td colspan="5" class="muted">Nessuna delega</td></tr>
+      }
+    </tbody>
+  </table>
+</div>

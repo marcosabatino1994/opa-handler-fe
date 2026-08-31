@@ -4,6 +4,7 @@ import { RolesComponent } from './roles/roles.component';
 import { UsersComponent } from './users/users.component';
 import { LoginComponent } from './login/login.component';
 import { TestAppComponent } from './test-app/test-app.component';
+import { DelegationsComponent } from './delegations/delegations.component';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -11,6 +12,7 @@ export const routes: Routes = [
   { path: 'permissions', component: PermissionsComponent },
   { path: 'roles', component: RolesComponent },
   { path: 'users', component: UsersComponent },
+  { path: 'delegations', component: DelegationsComponent },
   { path: 'login', component: LoginComponent },
   { path: 'test', component: TestAppComponent, canActivate: [authGuard] },
 ];
