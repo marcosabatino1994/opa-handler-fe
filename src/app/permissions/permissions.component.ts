@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { PermissionService } from '../services/permission.service';
 import { Permission } from '../models/permission';
 
-
 @Component({
   selector: 'app-permissions',
   standalone: true,
@@ -18,6 +17,9 @@ export class PermissionsComponent implements OnInit {
   permissions: Permission[] = [];
   newPermission: Permission = { action: '', resource: '' };
   error = '';
+
+  editingId: number | null = null;
+  editingPermission: Permission = { action: '', resource: '' };
 
   ngOnInit(): void {
     this.load();
@@ -34,11 +36,31 @@ export class PermissionsComponent implements OnInit {
     if (!this.newPermission.action || !this.newPermission.resource) return;
     this.service.create(this.newPermission).subscribe({
       next: () => {
-        this.newPermission = { action: '', resource: '' }; // svuoto il form
-        this.load();                                        // ricarico la lista
+        this.newPermission = { action: '', resource: '' };
+        this.load();
       },
       error: (err) => (this.error = 'Errore nella creazione: ' + err.message),
     });
+  }
+
+  startEdit(p: Permission): void {
+    this.editingId = p.id ?? null;
+    this.editingPermission = { action: p.action, resource: p.resource };
+  }
+
+  saveEdit(p: Permission): void {
+    if (p.id == null) return;
+    this.service.update(p.id, this.editingPermission).subscribe({
+      next: () => {
+        this.editingId = null;
+        this.load();
+      },
+      error: (err) => (this.error = 'Errore aggiornamento: ' + err.message),
+    });
+  }
+
+  cancelEdit(): void {
+    this.editingId = null;
   }
 
   remove(id: number | undefined): void {

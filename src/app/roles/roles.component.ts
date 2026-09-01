@@ -18,10 +18,13 @@ export class RolesComponent implements OnInit {
   private permissionService = inject(PermissionService);
 
   roles: Role[] = [];
-  permissions: Permission[] = [];      // per le checkbox
+  permissions: Permission[] = [];
   newName = '';
-  selectedIds = new Set<number>();     // id dei permessi spuntati
+  selectedIds = new Set<number>();
   error = '';
+
+  editingId: number | null = null;
+  editingPermIds = new Set<number>();
 
   ngOnInit(): void {
     this.load();
@@ -61,6 +64,41 @@ export class RolesComponent implements OnInit {
       },
       error: (err) => (this.error = 'Errore creazione ruolo: ' + err.message),
     });
+  }
+
+  startEdit(role: Role): void {
+    this.editingId = role.id ?? null;
+    this.editingPermIds = new Set(role.permissions.map(p => p.id).filter((id): id is number => id != null));
+  }
+
+  toggleEdit(id: number | undefined): void {
+    if (id == null) return;
+    this.editingPermIds.has(id) ? this.editingPermIds.delete(id) : this.editingPermIds.add(id);
+  }
+
+  isEditSelected(id: number | undefined): boolean {
+    return id != null && this.editingPermIds.has(id);
+  }
+
+  saveEdit(role: Role): void {
+    if (role.id == null) return;
+    const req: RoleRequest = {
+      name: role.name,
+      permissionIds: Array.from(this.editingPermIds),
+    };
+    this.roleService.update(role.id, req).subscribe({
+      next: () => {
+        this.editingId = null;
+        this.editingPermIds.clear();
+        this.load();
+      },
+      error: (err) => (this.error = 'Errore aggiornamento permessi: ' + err.message),
+    });
+  }
+
+  cancelEdit(): void {
+    this.editingId = null;
+    this.editingPermIds.clear();
   }
 
   remove(id: number | undefined): void {
