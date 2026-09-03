@@ -200,7 +200,7 @@
   <div class="inner">
     <p class="eyebrow">POC · RBAC · Open Policy Agent</p>
     <h1>opa-handler-fe</h1>
-    <p class="lead">Frontend Angular della POC RBAC + OPA. Due facce in un solo progetto: una dashboard per amministrare permessi, ruoli e utenti, e un'app di test dove un pulsante appare solo se OPA autorizza chi è collegato.</p>
+    <p class="lead">Frontend Angular della POC RBAC + OPA. Due facce in un solo progetto: una dashboard per amministrare permessi, ruoli, utenti e deleghe, e l'app di test <em>Tratte intermodali</em> dove le azioni su ogni tratta appaiono solo se OPA autorizza chi è collegato.</p>
     <div class="flow" aria-label="Flusso di autorizzazione">
       <span class="node">Dashboard</span><span class="arrow">→</span>
       <span class="node">Oracle</span><span class="arrow">→</span>
@@ -272,20 +272,25 @@ ng serve</code></pre>
 ├── models/            <span class="cmt"># forme dei dati</span>
 │   ├── permission.ts
 │   ├── role.ts
-│   └── user.ts
+│   ├── user.ts
+│   ├── delegation.ts
+│   └── route.ts             <span class="cmt"># tratta (origine, destinazione, modalità, stato)</span>
 ├── services/          <span class="cmt"># chiamate al backend + sessione</span>
 │   ├── permission.service.ts
 │   ├── role.service.ts
 │   ├── user.service.ts
-│   ├── authz.service.ts     <span class="cmt"># GET /authz -> decisione di OPA</span>
+│   ├── delegation.service.ts <span class="cmt"># GET/POST/DELETE /delegations</span>
+│   ├── route.service.ts     <span class="cmt"># CRUD /routes + approve/reject</span>
+│   ├── authz.service.ts     <span class="cmt"># GET /authz -> decisione di OPA (status opzionale)</span>
 │   └── session.service.ts   <span class="cmt"># login simulato (localStorage)</span>
 ├── guards/
 │   └── auth.guard.ts        <span class="cmt"># protegge /test</span>
 ├── permissions/       <span class="cmt"># dashboard: sezione Permessi</span>
 ├── roles/             <span class="cmt"># dashboard: sezione Ruoli</span>
 ├── users/             <span class="cmt"># dashboard: sezione Utenti</span>
+├── delegations/       <span class="cmt"># dashboard: sezione Deleghe</span>
 ├── login/             <span class="cmt"># app di test: schermata di accesso</span>
-├── test-app/          <span class="cmt"># app di test: portale col pulsante gestito da OPA</span>
+├── test-app/          <span class="cmt"># app di test: "Tratte intermodali", azioni gestite da OPA</span>
 ├── app.routes.ts
 └── app.config.ts</code></pre>
 
@@ -296,6 +301,7 @@ ng serve</code></pre>
       <tr><td><code>/permissions</code></td><td>Dashboard — permessi</td><td>no</td></tr>
       <tr><td><code>/roles</code></td><td>Dashboard — ruoli</td><td>no</td></tr>
       <tr><td><code>/users</code></td><td>Dashboard — utenti</td><td>no</td></tr>
+      <tr><td><code>/delegations</code></td><td>Dashboard — deleghe</td><td>no</td></tr>
       <tr><td><code>/login</code></td><td>App di test — accesso</td><td>no</td></tr>
       <tr><td><code>/test</code></td><td>App di test — portale</td><td>sì (<code>authGuard</code>)</td></tr>
     </tbody>
@@ -309,7 +315,9 @@ ng serve</code></pre>
       <tr><td><code>permission.service</code></td><td><code>GET/POST/DELETE /permissions</code></td><td>oggetto <code>{ id, action, resource }</code>; POST invia <code>{ action, resource }</code></td></tr>
       <tr><td><code>role.service</code></td><td><code>GET/POST/DELETE /roles</code></td><td>GET → <code>{ id, name, permissions:[…] }</code>; POST invia <code>{ name, permissionIds:[…] }</code></td></tr>
       <tr><td><code>user.service</code></td><td><code>GET/POST/DELETE /users</code></td><td>GET → <code>{ id, username, roles:[…] }</code>; POST invia <code>{ username, roleIds:[…] }</code></td></tr>
-      <tr><td><code>authz.service</code></td><td><code>GET /authz?user=&amp;action=&amp;resource=</code></td><td>restituisce <code>{ "result": true|false }</code></td></tr>
+      <tr><td><code>delegation.service</code></td><td><code>GET/POST/DELETE /delegations</code></td><td>oggetto <code>{ id, fromUser, toUser, action, resource }</code>; POST invia gli stessi campi (il backend valida che il delegante possieda il permesso)</td></tr>
+      <tr><td><code>route.service</code></td><td><code>GET/POST/PUT/DELETE /routes</code> + <code>POST /routes/{id}/approve|reject</code></td><td>tratta <code>{ id, origin, destination, modes[], status }</code>; POST/PUT inviano <code>{ origin, destination, modes[] }</code></td></tr>
+      <tr><td><code>authz.service</code></td><td><code>GET /authz?user=&amp;action=&amp;resource=&amp;status=</code></td><td><code>status</code> opzionale; restituisce <code>{ "result": true|false }</code></td></tr>
     </tbody>
   </table>
   <div class="note"><strong>Asimmetria lettura/scrittura</strong> — in lettura ricevi oggetti annidati (<code>role.permissions</code>, <code>user.roles</code>), in scrittura invii solo id (<code>permissionIds</code>, <code>roleIds</code>). L'utente eredita i permessi <em>attraverso</em> i ruoli, non li ha diretti.</div>
@@ -320,36 +328,45 @@ ng serve</code></pre>
   <ol class="steps">
     <li>
       <h3 style="margin-top:0">Permessi <code>/permissions</code></h3>
-      Crea <code>read</code> / <code>report</code> e <code>delete</code> / <code>report</code>.
+      Crea le azioni sul resource <code>tratta</code>: <code>create</code>, <code>read</code>, <code>modify</code>, <code>approve</code>, <code>reject</code>, <code>delete</code>.
     </li>
     <li>
       <h3 style="margin-top:0">Ruoli <code>/roles</code></h3>
-      <code>viewer</code> → spunta <strong>solo</strong> <code>read:report</code>.<br>
-      <code>editor</code> → spunta <code>read:report</code> <strong>e</strong> <code>delete:report</code>.
+      <code>viewer</code> → <strong>solo</strong> <code>read:tratta</code>.<br>
+      <code>editor</code> → <code>create</code>, <code>read</code>, <code>modify</code>, <code>delete</code> su <code>tratta</code>.<br>
+      <code>approver</code> → <code>read</code>, <code>approve</code>, <code>reject</code> su <code>tratta</code>.
     </li>
     <li>
       <h3 style="margin-top:0">Utenti <code>/users</code></h3>
-      <code>mario</code> → ruolo <code>editor</code>. &nbsp; <code>luigi</code> → ruolo <code>viewer</code>.
-      <p>Controprova: <code>curl.exe http://localhost:8080/users</code> deve mostrare mario con editor (read + delete) e luigi con viewer (solo read).</p>
+      <code>mario</code> → <code>editor</code>. &nbsp; <code>anna</code> → <code>approver</code>. &nbsp; <code>luigi</code> → <code>viewer</code>.
+      <p>Controprova: <code>curl.exe http://localhost:8080/users</code>.</p>
     </li>
     <li>
       <h3 style="margin-top:0">Prova l'app <code>/test</code></h3>
-      Accedi come <code>mario</code>, attendi ~15 s, premi <em>↻ ricarica permessi</em> → compare <span class="pill allow">Elimina ✓</span> (OPA autorizza <code>delete:report</code>).<br>
-      Esci, accedi come <code>luigi</code> → <span class="pill deny">niente pulsante ✗</span> (OPA nega la delete).
+      Attendi ~15 s, poi accedi e premi <em>↻ ricarica</em>:<br>
+      <code>mario</code> (editor) → <span class="pill allow">Nuova tratta · Modifica · Elimina ✓</span><br>
+      <code>anna</code> (approver) → <span class="pill allow">Approva · Rifiuta ✓</span><br>
+      <code>luigi</code> (viewer) → <span class="pill deny">solo elenco, nessuna azione ✗</span>
     </li>
     <li>
       <h3 style="margin-top:0">Il colpo di scena</h3>
-      Con mario loggato e il pulsante visibile: in dashboard cambia il suo ruolo da <code>editor</code> a <code>viewer</code>, torna su <code>/test</code>, attendi ~15 s e premi <em>↻ ricarica permessi</em> → il pulsante <strong>sparisce</strong>. Nessun codice ricompilato: è cambiato solo un dato nel database.
+      Con mario loggato e i pulsanti visibili: in dashboard cambia il suo ruolo da <code>editor</code> a <code>viewer</code>, torna su <code>/test</code>, attendi ~15 s e premi <em>↻ ricarica</em> → i pulsanti <strong>spariscono</strong>. Nessun codice ricompilato: è cambiato solo un dato nel database.
+    </li>
+    <li>
+      <h3 style="margin-top:0">Le deleghe <code>/delegations</code></h3>
+      Stessa azione, senza ruolo: crea una delega <code>fromUser=mario</code>, <code>toUser=luigi</code>, <code>action=delete</code>, <code>resource=tratta</code> (il backend accetta solo se mario possiede davvero <code>delete:tratta</code>). Accedi come <code>luigi</code>, ~15 s, <em>↻ ricarica</em> → compare <span class="pill allow">Elimina ✓</span>, concesso <strong>per delega</strong>. La delega è validata solo alla creazione: se poi togli il permesso a mario, luigi lo mantiene comunque.
     </li>
   </ol>
 
-  <div class="note">Il pannello <em>profilo</em> legge da Oracle (aggiornamento <strong>immediato</strong>), il pulsante dipende da OPA (aggiornamento dopo ~15 s del polling). Per qualche secondo vedi il ruolo già cambiato ma il pulsante ancora "vecchio": è il disaccoppiamento tra dati e decisione, visibile a occhio.</div>
+  <div class="note">Disaccoppiamento visibile: l'elenco delle tratte arriva da Oracle via <code>/routes</code> (aggiornamento <strong>immediato</strong>), mentre <em>quali azioni</em> sono permesse dipende da OPA (dopo ~15 s di polling). Dopo un cambio di ruolo, per qualche secondo vedi le stesse tratte ma coi pulsanti ancora "vecchi".</div>
 
   <h2>Note importanti</h2>
   <ul>
     <li><strong>Login simulato.</strong> Nessuna autenticazione reale: scegli <em>chi essere</em>, senza password. OPA riguarda l'autorizzazione (<em>cosa puoi fare</em>), non l'autenticazione (<em>dimostrare chi sei</em>). In produzione lo username arriverebbe da un identity provider.</li>
     <li><strong>Ritardo di ~15 s.</strong> È il polling con cui OPA ricarica il bundle dati da Quarkus. Dopo ogni modifica in dashboard, attendi qualche secondo e usa <em>↻ ricarica permessi</em>.</li>
     <li><strong>Gli id non ripartono da 1.</strong> Le sequenze Oracle continuano da dove erano, anche dopo aver svuotato le tabelle. È normale.</li>
+    <li><strong><code>status</code> non ancora usato dalla policy.</strong> L'app passa lo stato della tratta a OPA (in vista di un filtro tipo "il viewer vede solo le APPROVATA"), ma la policy attuale decide solo su user/action/resource.</li>
+    <li><strong>Deleghe.</strong> Una delega è validata alla creazione e poi vive per conto suo: sopravvive alla cancellazione del delegante o alla perdita del suo ruolo (riferimento per username, senza FK).</li>
   </ul>
 
   <h2>Risoluzione dei problemi</h2>
@@ -358,7 +375,7 @@ ng serve</code></pre>
     <tbody>
       <tr><td><code>Http failure … : 0 Unknown Error</code></td><td>Quarkus spento o CORS non attivo</td><td><code>nerdctl ps</code> (backend Up?); verifica il CORS lato Quarkus</td></tr>
       <tr><td><code>404 Not Found</code> su <code>/authz</code></td><td>L'endpoint non è nell'immagine in esecuzione</td><td>Ricompila e ribuilda l'immagine del backend</td></tr>
-      <tr><td>Il pulsante Elimina non appare mai</td><td>Permesso mancante o polling non atteso</td><td>L'utente ha <code>delete:report</code>? Atteso ~15 s e premuto <em>↻ ricarica</em>?</td></tr>
+      <tr><td>Le azioni su una tratta non appaiono mai</td><td>Permesso mancante o polling non atteso</td><td>L'utente ha il permesso giusto (es. <code>delete:tratta</code>)? Atteso ~15 s e premuto <em>↻ ricarica</em>?</td></tr>
       <tr><td>Profilo vuoto dopo il login</td><td>Username non combaciante</td><td>Deve corrispondere esatto a quello nel DB (maiuscole/spazi)</td></tr>
       <tr><td><code>500</code> eliminando un ruolo/utente dalla UI</td><td>Violazione di foreign key</td><td>Per svuotare tutto, cancella via SQL nell'ordine ponti → entità (<code>user_roles</code>, <code>role_permissions</code>, poi <code>app_users</code>, <code>app_roles</code>, <code>permissions</code>)</td></tr>
     </tbody>
